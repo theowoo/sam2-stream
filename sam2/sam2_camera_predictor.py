@@ -763,7 +763,8 @@ class SAM2CameraPredictor(SAM2Base):
         assert all_consolidated_frame_inds == input_frames_inds
 
     def add_new_promot_during_track(
-        self, point=None, bbox=None, mask=None, if_new_target=True
+        self, point=None, bbox=None, mask=None, if_new_target=True,
+        obj_id=None, labels=None, clear_old_points=True
     ):
         assert (
             self.condition_state["tracking_has_started"] == True
@@ -771,7 +772,7 @@ class SAM2CameraPredictor(SAM2Base):
 
         self.condition_state["tracking_has_started"] = False
 
-        obj_id = self.condition_state["obj_ids"][-1] + 1 if if_new_target else self.condition_state["obj_ids"][-1]
+        # obj_id = self.condition_state["obj_ids"][-1] + 1 if if_new_target else self.condition_state["obj_ids"][-1]
         frame_idx = 0
 
         print("shape ",len(self.condition_state["images"])," frame idex ",frame_idx)
@@ -781,7 +782,8 @@ class SAM2CameraPredictor(SAM2Base):
                 obj_id,
                 points=point,
                 bbox=bbox,
-                clear_old_points=True,
+                labels=labels,
+                clear_old_points=clear_old_points,
                 normalize_coords=True,
             )
         else:

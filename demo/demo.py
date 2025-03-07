@@ -48,18 +48,18 @@ while True:
 
 
         ##! add points, `1` means positive click and `0` means negative click
-        # points = np.array([[660, 267]], dtype=np.float32)
-        # labels = np.array([1], dtype=np.int32)
+        points = np.array([[660, 267]], dtype=np.float32)
+        labels = np.array([1], dtype=np.int32)
 
-        # _, out_obj_ids, out_mask_logits = predictor.add_new_prompt(
-        #     frame_idx=ann_frame_idx, obj_id=ann_obj_id, points=points, labels=labels
-        # )
+        _, out_obj_ids, out_mask_logits = predictor.add_new_prompt(
+            frame_idx=ann_frame_idx, obj_id=ann_obj_id, points=points, labels=labels
+        )
 
         ## ! add bbox
-        bbox = np.array([[600, 214], [765, 286]], dtype=np.float32)
-        _, out_obj_ids, out_mask_logits = predictor.add_new_prompt(
-            frame_idx=ann_frame_idx, obj_id=ann_obj_id, bbox=bbox
-        )
+        # bbox = np.array([[600, 214], [765, 286]], dtype=np.float32)
+        # _, out_obj_ids, out_mask_logits = predictor.add_new_prompt(
+        #     frame_idx=ann_frame_idx, obj_id=ann_obj_id, bbox=bbox
+        # )
 
         ##! add mask
         # mask_img_path="../notebooks/masks/aquarium/aquarium_mask.png"
@@ -76,15 +76,19 @@ while True:
         
         if tracking_i == 2:
             ## ! add new bbox
-            bbox = np.array([[330, 200], [360, 230]], dtype=np.float32)
-            predictor.add_new_promot_during_track(
-                bbox=bbox, if_new_target=False
-            )
-            ## ! add new point
-            # points = np.array([[350, 220]], dtype=np.float32)
+            # bbox = np.array([[330, 200], [360, 230]], dtype=np.float32)
             # predictor.add_new_promot_during_track(
-            #     point=points, if_new_target=False
+            #     bbox=bbox, if_new_target=False
             # )
+            ## ! add new point
+            points = np.array([[350, 210]], dtype=np.float32)
+            labels = np.array([1], dtype=np.int32)
+            ann_obj_id = 1
+            predictor.add_new_promot_during_track(
+                point=points, if_new_target=False,
+                obj_id=ann_obj_id, labels=labels,
+                clear_old_points=True
+            )
 
         all_mask = np.zeros((height, width, 3), dtype=np.uint8)
         all_mask[...,1] = 255
