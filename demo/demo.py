@@ -73,22 +73,25 @@ while True:
     else:
         out_obj_ids, out_mask_logits = predictor.track(frame)
 
-        all_mask = np.zeros((height, width, 1), dtype=np.uint8)
+        all_mask = np.zeros((height, width, 3), dtype=np.uint8)
+        all_mask[...,1] = 255
         # print(all_mask.shape)
         for i in range(0, len(out_obj_ids)):
             out_mask = (out_mask_logits[i] > 0.0).permute(1, 2, 0).cpu().numpy().astype(
                 np.uint8
             ) * 255
 
-            all_mask = cv2.bitwise_or(all_mask, out_mask)
+            hue = (i+2) / (len(out_obj_ids)+2) * 255
+            all_mask[out_mask[...,0]==255, 0] = hue
+            all_mask[out_mask[...,0]==255, 2] = 255
 
-        all_mask = cv2.cvtColor(all_mask, cv2.COLOR_GRAY2RGB)
+        all_mask = cv2.cvtColor(all_mask, cv2.COLOR_HSV2RGB)
         frame = cv2.addWeighted(frame, 1, all_mask, 0.5, 0)
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     cv2.imshow("frame", frame)
 
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
-
+    
 cap.release()
 # gif = imageio.mimsave("./result.gif", frame_list, "GIF", duration=0.00085)
