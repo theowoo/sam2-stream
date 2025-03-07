@@ -781,7 +781,7 @@ class SAM2CameraPredictor(SAM2Base):
                 obj_id,
                 points=point,
                 bbox=bbox,
-                clear_old_points=False,
+                clear_old_points=True,
                 normalize_coords=True,
             )
         else:

@@ -27,7 +27,7 @@ predictor = build_sam2_camera_predictor(model_cfg, sam2_checkpoint)
 cap = cv2.VideoCapture("../notebooks/videos/aquarium/aquarium.mp4")
 
 if_init = False
-
+tracking_i = 0
 
 while True:
     ret, frame = cap.read()
@@ -72,6 +72,19 @@ while True:
 
     else:
         out_obj_ids, out_mask_logits = predictor.track(frame)
+        tracking_i += 1
+        
+        if tracking_i == 2:
+            ## ! add new bbox
+            bbox = np.array([[330, 200], [360, 230]], dtype=np.float32)
+            predictor.add_new_promot_during_track(
+                bbox=bbox, if_new_target=False
+            )
+            ## ! add new point
+            # points = np.array([[350, 220]], dtype=np.float32)
+            # predictor.add_new_promot_during_track(
+            #     point=points, if_new_target=False
+            # )
 
         all_mask = np.zeros((height, width, 3), dtype=np.uint8)
         all_mask[...,1] = 255
