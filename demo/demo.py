@@ -69,25 +69,33 @@ while True:
         # _, out_obj_ids, out_mask_logits = predictor.add_new_mask(
         #     frame_idx=ann_frame_idx, obj_id=ann_obj_id, mask=mask
         # )
+        
+        ## ! add second annotaion object
+        ann_obj_id = 2  # give a unique id to each object we interact with (it can be any integers)
+        points = np.array([[350, 210]], dtype=np.float32)
+        labels = np.array([1], dtype=np.int32)
+        _, out_obj_ids, out_mask_logits = predictor.add_new_prompt(
+            frame_idx=ann_frame_idx, obj_id=ann_obj_id, points=points, labels=labels
+        )
 
     else:
         out_obj_ids, out_mask_logits = predictor.track(frame)
         tracking_i += 1
         
-        if tracking_i == 2:
+        if tracking_i == 3:
             ## ! add new bbox
             # bbox = np.array([[330, 200], [360, 230]], dtype=np.float32)
             # predictor.add_new_promot_during_track(
             #     bbox=bbox, if_new_target=False
             # )
             ## ! add new point
-            points = np.array([[350, 210]], dtype=np.float32)
+            points = np.array([[520, 240]], dtype=np.float32)
             labels = np.array([1], dtype=np.int32)
             ann_obj_id = 1
             predictor.add_new_promot_during_track(
                 point=points, if_new_target=False,
                 obj_id=ann_obj_id, labels=labels,
-                clear_old_points=True
+                clear_old_points=False
             )
 
         all_mask = np.zeros((height, width, 3), dtype=np.uint8)
@@ -98,7 +106,7 @@ while True:
                 np.uint8
             ) * 255
 
-            hue = (i+2) / (len(out_obj_ids)+2) * 255
+            hue = (i+3) / (len(out_obj_ids)+3) * 255
             all_mask[out_mask[...,0]==255, 0] = hue
             all_mask[out_mask[...,0]==255, 2] = 255
 
