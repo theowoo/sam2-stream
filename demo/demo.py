@@ -81,7 +81,7 @@ while True:
             ## ! add new bbox
             bbox = np.array([[450, 280], [520, 340]], dtype=np.float32)
             ann_obj_id = 2
-            predictor.add_new_promot_during_track(
+            predictor.add_new_prompt_during_track(
                 bbox=bbox, 
                 obj_id=ann_obj_id, 
                 if_new_target=False,
@@ -95,7 +95,7 @@ while True:
             points = np.array([[460, 270]], dtype=np.float32)
             labels = np.array([1], dtype=np.int32)
             ann_obj_id = 1
-            predictor.add_new_promot_during_track(
+            predictor.add_new_prompt_during_track(
                 point=points, labels=labels,
                 obj_id=ann_obj_id, 
                 if_new_target=False,

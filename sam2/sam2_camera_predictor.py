@@ -763,7 +763,7 @@ class SAM2CameraPredictor(SAM2Base):
             input_frames_inds.update(mask_inputs_per_frame.keys())
         assert all_consolidated_frame_inds == input_frames_inds
 
-    def add_new_promot_during_track(
+    def add_new_prompt_during_track(
         self, point=None, bbox=None, mask=None, if_new_target=True,
         obj_id=None, labels=None, clear_old_points=True
     ):
@@ -784,7 +784,7 @@ class SAM2CameraPredictor(SAM2Base):
 
         frame_idx = self.condition_state["num_frames"] - 1
 
-        print("shape ",len(self.condition_state["images"])," frame idex ",frame_idx)
+        print("shape ",len(self.condition_state["images"])," frame index ",frame_idx)
         if point is not None or bbox is not None:
             frame_idx, obj_ids, video_res_masks = self.add_new_prompt(
                 frame_idx,
