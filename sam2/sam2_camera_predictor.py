@@ -79,6 +79,7 @@ class SAM2CameraPredictor(SAM2Base):
         self.condition_state["video_width"] = width
         self._get_image_feature(frame_idx=0, batch_size=1)
 
+    @torch.inference_mode()
     def add_conditioning_frame(self, img):
         img, width, height = self.perpare_data(img, image_size=self.image_size)
         self.condition_state["images"].append(img)
@@ -768,16 +769,24 @@ class SAM2CameraPredictor(SAM2Base):
     ):
         assert (
             self.condition_state["tracking_has_started"] == True
-        ), "Cannot add new points or mask during tracking without calling "
+        ), "Cannot add new points or mask during tracking without calling track()"
 
         self.condition_state["tracking_has_started"] = False
+        
+        if if_new_target == True:
+            raise NotImplementedError()
 
-        # obj_id = self.condition_state["obj_ids"][-1] + 1 if if_new_target else self.condition_state["obj_ids"][-1]
-        frame_idx = 0
+        if obj_id is None:
+            if if_new_target:
+                obj_id = self.condition_state["obj_ids"][-1] + 1
+            else:
+                self.condition_state["obj_ids"][-1]
+
+        frame_idx = self.condition_state["num_frames"] - 1
 
         print("shape ",len(self.condition_state["images"])," frame idex ",frame_idx)
         if point is not None or bbox is not None:
-            self.add_new_prompt(
+            frame_idx, obj_ids, video_res_masks = self.add_new_prompt(
                 frame_idx,
                 obj_id,
                 points=point,
@@ -789,6 +798,7 @@ class SAM2CameraPredictor(SAM2Base):
         else:
             self.add_new_mask(frame_idx, obj_id, mask)
 
+        return frame_idx, obj_ids, video_res_masks
 
     ###
     @torch.inference_mode()

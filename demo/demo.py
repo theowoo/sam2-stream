@@ -43,23 +43,24 @@ while True:
         if_init = True
 
         ann_frame_idx = 0  # the frame index we interact with
+        
+        # First annotation
         ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
-        # Let's add a positive click at (x, y) = (210, 350) to get started
-
-
         ##! add points, `1` means positive click and `0` means negative click
-        points = np.array([[660, 267]], dtype=np.float32)
+        points = np.array([[600, 255]], dtype=np.float32)
         labels = np.array([1], dtype=np.int32)
-
+        
         _, out_obj_ids, out_mask_logits = predictor.add_new_prompt(
             frame_idx=ann_frame_idx, obj_id=ann_obj_id, points=points, labels=labels
         )
 
+        # Second annotation
+        ann_obj_id = 2
         ## ! add bbox
-        # bbox = np.array([[600, 214], [765, 286]], dtype=np.float32)
-        # _, out_obj_ids, out_mask_logits = predictor.add_new_prompt(
-        #     frame_idx=ann_frame_idx, obj_id=ann_obj_id, bbox=bbox
-        # )
+        bbox = np.array([[600, 214], [765, 286]], dtype=np.float32)
+        _, out_obj_ids, out_mask_logits = predictor.add_new_prompt(
+            frame_idx=ann_frame_idx, obj_id=ann_obj_id, bbox=bbox
+        )
 
         ##! add mask
         # mask_img_path="../notebooks/masks/aquarium/aquarium_mask.png"
@@ -69,32 +70,35 @@ while True:
         # _, out_obj_ids, out_mask_logits = predictor.add_new_mask(
         #     frame_idx=ann_frame_idx, obj_id=ann_obj_id, mask=mask
         # )
-        
-        ## ! add second annotaion object
-        ann_obj_id = 2  # give a unique id to each object we interact with (it can be any integers)
-        points = np.array([[350, 210]], dtype=np.float32)
-        labels = np.array([1], dtype=np.int32)
-        _, out_obj_ids, out_mask_logits = predictor.add_new_prompt(
-            frame_idx=ann_frame_idx, obj_id=ann_obj_id, points=points, labels=labels
-        )
 
     else:
         out_obj_ids, out_mask_logits = predictor.track(frame)
         tracking_i += 1
         
-        if tracking_i == 3:
+        if tracking_i == 100:
+            predictor.add_conditioning_frame(frame)
+            
             ## ! add new bbox
-            # bbox = np.array([[330, 200], [360, 230]], dtype=np.float32)
-            # predictor.add_new_promot_during_track(
-            #     bbox=bbox, if_new_target=False
-            # )
-            ## ! add new point
-            points = np.array([[520, 240]], dtype=np.float32)
+            bbox = np.array([[450, 280], [520, 340]], dtype=np.float32)
+            ann_obj_id = 2
+            predictor.add_new_promot_during_track(
+                bbox=bbox, 
+                obj_id=ann_obj_id, 
+                if_new_target=False,
+                clear_old_points=False
+            )
+            
+        if tracking_i == 160:
+            predictor.add_conditioning_frame(frame)
+            
+            # ! add new point
+            points = np.array([[460, 270]], dtype=np.float32)
             labels = np.array([1], dtype=np.int32)
             ann_obj_id = 1
             predictor.add_new_promot_during_track(
-                point=points, if_new_target=False,
-                obj_id=ann_obj_id, labels=labels,
+                point=points, labels=labels,
+                obj_id=ann_obj_id, 
+                if_new_target=False,
                 clear_old_points=False
             )
 
