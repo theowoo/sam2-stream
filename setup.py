@@ -8,10 +8,10 @@ from setuptools import find_packages, setup
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
 # Package metadata
-NAME = "SAM 2"
-VERSION = "1.0"
-DESCRIPTION = "SAM 2: Segment Anything in Images and Videos"
-URL = "https://github.com/facebookresearch/segment-anything-2"
+NAME = "SAM-2"
+VERSION = "1.1"
+DESCRIPTION = "SAM 2: Segment Anything in Images and Videos (stream)"
+URL = "https://github.com/theowoo/sam2-stream"
 AUTHOR = "Meta AI"
 AUTHOR_EMAIL = "segment-anything@meta.com"
 LICENSE = "Apache 2.0"
@@ -29,6 +29,8 @@ REQUIRED_PACKAGES = [
     "hydra-core>=1.3.2",
     "iopath>=0.1.10",
     "pillow>=9.4.0",
+    "rich-click>=1.8.9",
+    "h5py>=3.13.0"
 ]
 
 EXTRA_PACKAGES = {

@@ -347,3 +347,31 @@ def concat_points(old_point_inputs, new_points, new_labels):
         labels = torch.cat([old_point_inputs["point_labels"], new_labels], dim=1)
 
     return {"point_coords": points, "point_labels": labels}
+
+
+def remove_lines(fig=None, ticks=True, spines=True, axis=None):
+    """Remove lines from matplotlib plot."""
+
+    import matplotlib.pyplot as plt
+
+    if axis is not None:
+        axis_list = [axis]
+    else:
+        if fig is None:
+            fig = plt.gcf()
+
+        axis_list = fig.get_axes()
+
+    for ax in axis_list:
+        if ticks:
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.minorticks_off()
+            try:
+                ax.set_zticks([])
+            except Exception:
+                pass
+
+        if spines:
+            for spine in ax.spines.values():
+                spine.set_visible(0)
