@@ -128,6 +128,7 @@ class PositionEmbeddingSine(nn.Module):
         cache_key = (x.shape[-2], x.shape[-1])
         return self._pe(B, x.device, *cache_key)
 
+
 class PositionEmbeddingRandom(nn.Module):
     """
     Positional encoding using random spatial frequencies.

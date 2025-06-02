@@ -118,6 +118,7 @@ def build_sam2_camera_predictor(
         model.eval()
     return model
 
+
 def _load_checkpoint(model, ckpt_path):
     if ckpt_path is not None:
         sd = torch.load(ckpt_path, map_location="cpu")["model"]
