@@ -29,7 +29,7 @@ def run_sam2(
     start: float = 0,
     end: float = None,
     rerun: bool = False,
-    codec: str = "VP90",
+    codec: str = "MP4V",
     fps: float = None,
 ):
 
@@ -229,7 +229,7 @@ def run_sam2(
 @click.option("--start", type=float, help="Start video at (seconds)")
 @click.option("--end", type=float, help="End video at (seconds)")
 @click.option("--rerun", is_flag=True, help="Overwrite existing output")
-@click.option("--codec", default="VP90", type=str, help="Alternative: H264")
+@click.option("--codec", default="MP4V", type=str, help="Alternative: H264, VP90")
 @click.option(
     "--fps",
     default=None,
@@ -247,7 +247,7 @@ def run_sam2_cmd(
     start: float = 0,
     end: float = None,
     rerun: bool = False,
-    codec: str = "VP90",
+    codec: str = "MP4V",
     fps: float = None,
 ):
     """Plot mask overlay. (INPUT : video or directory containing image sequence.)"""
