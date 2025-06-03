@@ -3,6 +3,7 @@
 
 import os
 import sys
+from glob import glob
 
 import cv2
 import h5py
@@ -14,6 +15,7 @@ from sam2.utils.io import load_sam2_model, refine_sam2_model
 from sam2.utils.misc import overlay_prediction
 
 ANNOTATION_SUFFIX = ".annotation"
+DEFAULT_FRAME_RATE = 25
 
 
 def run_sam2(
@@ -28,6 +30,7 @@ def run_sam2(
     end: float = None,
     rerun: bool = False,
     codec: str = "VP90",
+    fps: float = None,
 ):
 
     if output is not None and os.path.isfile(output) and not rerun:
@@ -40,11 +43,29 @@ def run_sam2(
 
     model_instance = refine_sam2_model(model_instance, annotation)
 
+    # Define input mode
+    if os.path.isdir(input):
+        input_mode = "image_sequence"
+        click.secho("Input directory.", fg="green")
+    elif os.path.isfile(input):
+        input_mode = "video"
+        click.secho("Input file.", fg="green")
+
     # Set up video info
-    cap = cv2.VideoCapture(input)
-    fps = float(cap.get(cv2.CAP_PROP_FPS))
-    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    if input_mode == "video":
+        cap = cv2.VideoCapture(input)
+        if fps is None:
+            fps = float(cap.get(cv2.CAP_PROP_FPS))
+        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    elif input_mode == "image_sequence":
+        image_files = np.sort(glob(os.path.join(input, "*")))
+        first_frame = image_files[0]
+        if fps is None:
+            fps = DEFAULT_FRAME_RATE
+        im = cv2.imread(first_frame)
+        h, w = im.shape[:2]
 
     if output_video is not None:
         if codec == "H264":
@@ -62,7 +83,10 @@ def run_sam2(
         frame_start = start * fps
 
     if end is None:
-        frame_end = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        if input_mode == "video":
+            frame_end = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        elif input_mode == "image_sequence":
+            frame_end = len(image_files)
     else:
         frame_end = end * fps
 
@@ -117,17 +141,23 @@ def run_sam2(
 
     PBAR = tqdm(total=total_samples, file=sys.stdout)
 
-    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_start)
+    if input_mode == "video":
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_start)
 
     for i in np.arange(total_samples):
-        # Read frame and get mask
-        _, im = cap.read()
-
-        frame, mask = overlay_prediction(im, model_instance)
 
         frame_number = (
             frame_start + i * sampling_rate
         )  # Calculate the actual frame number
+
+        # Read frame and get mask
+        if input_mode == "video":
+            _, im = cap.read()
+        elif input_mode == "image_sequence":
+            im = cv2.imread(image_files[frame_number])
+
+        frame, mask = overlay_prediction(im, model_instance)
+
         cv2.putText(
             frame,
             str(frame_number),
@@ -155,13 +185,15 @@ def run_sam2(
         PBAR.update(1)
 
         # Skip frames between samples
-        for _ in range(sampling_rate - 1):
-            cap.grab()
+        if input_mode == "video":
+            for _ in range(sampling_rate - 1):
+                cap.grab()
 
         if play_video and cv2.waitKey(1) and 0xFF == ord("q"):
             break
 
-    cap.release()
+    if input_mode == "video":
+        cap.release()
 
     if output_video is not None:
         wr.release()
@@ -194,6 +226,12 @@ def run_sam2(
 @click.option("--end", type=float, help="End video at (seconds)")
 @click.option("--rerun", is_flag=True, help="Overwrite existing output")
 @click.option("--codec", default="VP90", type=str, help="Alternative: H264")
+@click.option(
+    "--fps",
+    default=None,
+    type=float,
+    help="Overwrite frame rate. Useful for image sequence.",
+)
 def run_sam2_cmd(
     input: str,
     model: str,
@@ -206,8 +244,9 @@ def run_sam2_cmd(
     end: float = None,
     rerun: bool = False,
     codec: str = "VP90",
+    fps: float = None,
 ):
-    "Plot mask overlay."
+    """Plot mask overlay. (INPUT : video or directory containing image sequence.)"""
     if annotation is None:
         annotation = os.path.splitext(input)[0] + ANNOTATION_SUFFIX
 
@@ -223,6 +262,7 @@ def run_sam2_cmd(
         end=end,
         rerun=rerun,
         codec=codec,
+        fps=fps,
     )
 
 

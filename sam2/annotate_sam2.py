@@ -5,6 +5,7 @@ import os
 
 import tkinter as tk
 import warnings
+from glob import glob
 from tkinter import ttk
 
 import cv2
@@ -42,6 +43,25 @@ class VideoBrowser(object):
         self.label_curr_var = None
         self.label_curr_idx = 0
         self.output = None
+
+    def init_input(self, input):
+        if os.path.isdir(input):
+            self.input_mode = "image_sequence"
+            click.secho("Input directory.", fg="green")
+            self.input_dir = input
+
+        elif os.path.isfile(input):
+            self.input_mode = "video"
+            click.secho("Input file.", fg="green")
+            self.cap = cv2.VideoCapture(input)
+
+    def get_n_frames(self):
+
+        if self.input_mode == "image_sequence":
+            self.n_frames = len(glob(os.path.join(self.input_dir, "*")))
+
+        elif self.input_mode == "video":
+            self.n_frames = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
 
     def init_annotation(self, input, tmp_output):
         rel_video_path = os.path.relpath(input, os.path.dirname(tmp_output))
@@ -181,12 +201,22 @@ class VideoBrowser(object):
             else:
                 click.secho("Empty subplot. Ignored.", fg="yellow")
 
+    def get_frame(self, f):
+        if self.input_mode == "image_sequence":
+            image_files = np.sort(glob(os.path.join(self.input_dir, "*")))
+            im = cv2.imread(image_files[f])
+
+        elif self.input_mode == "video":
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, f)
+            _, im = self.cap.read()
+
+        return im
+
     def load_frames(self):
         images = []
 
-        for i, f in enumerate(tqdm(self.frames_samples, desc="Reading frames:")):
-            self.cap.set(cv2.CAP_PROP_POS_FRAMES, f)
-            _, im = self.cap.read()
+        for f in tqdm(self.frames_samples, desc="Reading frames:"):
+            im = self.get_frame(f)
             images.append(im)
 
         self.ann_frames = images
@@ -302,15 +332,14 @@ class VideoBrowser(object):
             click.secho("Frame already loaded. Add another.", fg="red")
             return
 
-        n_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-        assert frame_to_add < n_frames, f"Frame number must be smaller than {n_frames}."
+        assert (
+            frame_to_add < self.n_frames
+        ), f"Frame number must be smaller than {self.n_frames}."
 
         self.frames_samples = np.append(self.frames_samples, [frame_to_add])
 
         # load new frame
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_to_add)
-        _, im = self.cap.read()
+        im = self.get_frame(frame_to_add)
         self.ann_frames = np.append(self.ann_frames, [im], axis=0)
 
         self.write_annotation()
@@ -345,11 +374,11 @@ def annotate_sam2(
     browser.n_cols = n_cols
     browser.output = output
 
-    # Set up video
-    browser.cap = cv2.VideoCapture(input)
-    n_frames = browser.cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    # Set up video or image dir
+    browser.init_input(input)
+    browser.get_n_frames()
     browser.frames_samples = np.linspace(
-        0, n_frames, n_samples, endpoint=False, dtype=int
+        0, browser.n_frames, n_samples, endpoint=False, dtype=int
     )
 
     # Initialise model
@@ -458,7 +487,6 @@ def annotate_sam2(
 @click.option(
     "--model-config",
     "-mc",
-    required=True,
     help="Name of YAML model config, aka model base.",
     default="configs/sam2.1/sam2.1_hiera_s.yaml",
 )
@@ -487,7 +515,14 @@ def annotate_sam2_cmd(
     n_cols: int = 4,
     output: str = None,
 ):
+    """Annotation GUI for prompting SAM2. (INPUT : video or directory containing image sequence.)"""
     if output is None:
+        if os.path.isdir(input):
+
+            # Unify ending / behaviour
+            if input[-1] == os.sep:
+                input = input[:-1]
+
         output = os.path.splitext(input)[0] + ANNOTATION_SUFFIX
 
     annotate_sam2(

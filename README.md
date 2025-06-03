@@ -2,7 +2,7 @@
 Run Segment Anything Model 2 on a **live video stream** with GUI for point prompts (WIP).
 
 ## News
-- 03/06/2025 : GUI for annotation, save output as hdf5
+- 03/06/2025 : GUI for annotation, save output as hdf5, supports both video and image sequence inputs
 - 10/03/2025 : Fix adding points or bbox during tracking
 - 13/12/2024 : Update to sam2.1
 - 20/08/2024 : Fix management of ```non_cond_frame_outputs``` for better performance and add bbox prompt
@@ -31,7 +31,7 @@ If you are installing on Windows, it's strongly recommended to use [Windows Subs
 To use the SAM 2 predictor and run the example notebooks, `jupyter` is required and can be installed by:
 
 ```bash
-pip install 'sam-2 @ git+https://github.com/theowoo/sam2-stream.git@gui[demo]'
+pip install 'sam-2 @ git+https://github.com/theowoo/sam2-stream.git@gui[notebooks]'
 ```
 
 Note:
@@ -75,6 +75,11 @@ Example:
 ```bash
 annotate_sam2 blackswan.mp4 --model checkpoints/sam2.1_hiera_small.pt --model-config configs/sam2.1/sam2.1_hiera_s.yaml --output blackswan.annotation
 ```
+
+```bash
+annotate_sam2 blackswan.mp4 --model checkpoints/sam2.1_hiera_small.pt --model-config configs/sam2.1/sam2.1_hiera_s.yaml --output blackswan.annotation
+```
+
 
 The `--model-config` is a string reference that should match the name of the model checkpoint, but the config file itself doesn't have to be downloaded separately.
 

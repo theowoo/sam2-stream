@@ -36,7 +36,7 @@ REQUIRED_PACKAGES = [
 ]
 
 EXTRA_PACKAGES = {
-    "demo": ["jupyter>=1.0.0"],
+    "notebooks": ["jupyter>=1.0.0"],
     "dev": ["black==24.2.0", "usort==1.0.2", "ufmt==2.0.0b2"],
 }
 
