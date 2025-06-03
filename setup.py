@@ -31,11 +31,12 @@ REQUIRED_PACKAGES = [
     "pillow>=9.4.0",
     "rich-click>=1.8.9",
     "h5py>=3.13.0",
-    "opencv-python>=4.7.0"
+    "opencv-python>=4.7.0",
+    "matplotlib>=3.9.1",
 ]
 
 EXTRA_PACKAGES = {
-    "demo": ["matplotlib>=3.9.1", "jupyter>=1.0.0"],
+    "demo": ["jupyter>=1.0.0"],
     "dev": ["black==24.2.0", "usort==1.0.2", "ufmt==2.0.0b2"],
 }
 
