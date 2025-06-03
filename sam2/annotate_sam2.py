@@ -406,7 +406,7 @@ def annotate_sam2(
     )
 
     # Set up label list
-    browser.label_var = tk.Variable(value=["cuttlefish", "headstage"])
+    browser.label_var = tk.Variable(value=["label1", "label2"])
     browser.label_listbox = tk.Listbox(
         browser.root,
         listvariable=browser.label_var,
