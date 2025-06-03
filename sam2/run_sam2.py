@@ -123,6 +123,9 @@ def run_sam2(
         rel_model_path = os.path.relpath(model, os.path.dirname(output))
         rel_annotation_path = os.path.relpath(annotation, os.path.dirname(output))
 
+        with h5py.File(annotation, "r") as hf:
+            label_names = hf.attrs["label_names"]
+
         with h5py.File(tmp_output, "w") as hf:
             hf.create_dataset(
                 "segmentation",
@@ -137,6 +140,7 @@ def run_sam2(
             hf.attrs["sampling_rate"] = sampling_rate
             hf.attrs["frame_start"] = frame_start
             hf.attrs["frame_end"] = frame_end
+            hf.attrs["label_names"] = label_names
             hf.create_dataset("frame_numbers", data=total_samples, dtype="int32")
 
     PBAR = tqdm(total=total_samples, file=sys.stdout)

@@ -67,6 +67,7 @@ class VideoBrowser(object):
         rel_video_path = os.path.relpath(input, os.path.dirname(tmp_output))
         with h5py.File(tmp_output, "w") as hf:
             hf.attrs["video"] = rel_video_path
+            hf.attrs["label_names"] = self.label_names
             hf.create_dataset("frames", data=self.frames, dtype="int32")
             hf.create_dataset("ann_frames", data=self.ann_frames, dtype="uint8")
             hf.create_dataset("ann_frame_idx", data=self.ann_frame_idx, dtype="int32")
@@ -91,6 +92,7 @@ class VideoBrowser(object):
             self.labels = hf["labels"][:]
             self.positions = hf["positions"][:]
             self.is_target = hf["is_target"][:]
+            self.label_names = hf.attrs["label_names"]
 
         click.secho("Exisitng annotations loaded.", fg="green")
 
@@ -136,6 +138,14 @@ class VideoBrowser(object):
 
         self.canvas.draw()
         self.fig.canvas.mpl_connect("button_press_event", self.on_click)
+
+    def write_label_names(self):
+        self.label_names = self.label_var.get()
+        with h5py.File(self.tmp_output, "r+") as hf:
+            hf.attrs["label_names"] = self.label_names
+        click.secho(
+            f"Temp annotation written with new labels: {self.label_names}", fg="blue"
+        )
 
     def update_canvas(self):
         if len(self.ann_frames) > len(self.ax):
@@ -324,6 +334,7 @@ class VideoBrowser(object):
         click.secho(f"label renamed: {i} - {new_label}", fg="blue")
         new_variables[i] = new_label
         self.label_var.set(new_variables)
+        self.write_label_names()
 
     def add_frame(self, event):
         frame_to_add = self.frame_entry_var.get()
@@ -362,6 +373,7 @@ def annotate_sam2(
     model_config: str = "configs/sam2.1/sam2.1_hiera_s.yaml",
     n_samples: int = 3,
     n_cols: int = 4,
+    n_classes: int = 2,
     output: str = None,
 ):
     # Set up paths
@@ -382,6 +394,7 @@ def annotate_sam2(
     )
 
     # Initialise model
+    browser.label_names = [f"label{i+1}" for i in range(n_classes)]
     browser.init_annotation(input, tmp_output)
     browser.init_model(model, model_config)
 
@@ -401,6 +414,11 @@ def annotate_sam2(
                 new_idx = len(browser.frames_samples) - 1
                 browser.ann_frame_idx[browser.frames == f] = new_idx
                 click.secho(f"Append frame {f} as index {new_idx}", fg="yellow")
+
+        if len(browser.label_names) < n_classes:
+            new_label_names = [f"label{i+1}" for i in range(n_classes)]
+            new_label_names[: len(browser.label_names)] = browser.label_names
+            browser.label_names = new_label_names
 
     # Set up plot
     browser.load_frames()
@@ -438,11 +456,13 @@ def annotate_sam2(
     )
 
     # Set up label list
-    browser.label_var = tk.Variable(value=["label1", "label2"])
+    browser.label_var = tk.Variable()
+    browser.label_var.set(tuple(browser.label_names))
+    browser.write_label_names()
     browser.label_listbox = tk.Listbox(
         browser.root,
         listvariable=browser.label_var,
-        height=3,
+        height=len(browser.label_names),
     )
     browser.label_listbox.select_set(0)
     browser.label_listbox.bind("<<ListboxSelect>>", browser.label_func)
@@ -506,6 +526,14 @@ def annotate_sam2(
     default=4,
     help="Number of columns.",
 )
+@click.option(
+    "--n-classes",
+    "-k",
+    required=False,
+    type=int,
+    default=2,
+    help="Number of classes to label.",
+)
 @click.option("--output", "-o", required=False, help="Output annotation.")
 def annotate_sam2_cmd(
     input: str,
@@ -513,6 +541,7 @@ def annotate_sam2_cmd(
     model_config: str = "configs/sam2.1/sam2.1_hiera_s.yaml",
     n_samples: int = 3,
     n_cols: int = 4,
+    n_classes: int = 2,
     output: str = None,
 ):
     """Annotation GUI for prompting SAM2. (INPUT : video or directory containing image sequence.)"""
@@ -531,6 +560,7 @@ def annotate_sam2_cmd(
         model_config=model_config,
         n_samples=n_samples,
         n_cols=n_cols,
+        n_classes=n_classes,
         output=output,
     )
 
