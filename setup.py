@@ -30,11 +30,12 @@ REQUIRED_PACKAGES = [
     "iopath>=0.1.10",
     "pillow>=9.4.0",
     "rich-click>=1.8.9",
-    "h5py>=3.13.0"
+    "h5py>=3.13.0",
+    "opencv-python>=4.7.0"
 ]
 
 EXTRA_PACKAGES = {
-    "demo": ["matplotlib>=3.9.1", "jupyter>=1.0.0", "opencv-python>=4.7.0"],
+    "demo": ["matplotlib>=3.9.1", "jupyter>=1.0.0"],
     "dev": ["black==24.2.0", "usort==1.0.2", "ufmt==2.0.0b2"],
 }
 
@@ -72,4 +73,10 @@ setup(
     python_requires=">=3.10.0",
     ext_modules=get_extensions(),
     cmdclass={"build_ext": BuildExtension.with_options(no_python_abi_suffix=True)},
+    entry_points = {
+        'console_scripts': [
+            'run_sam2 = sam2.run_sam2:run_sam2_cmd',
+            'annotate_sam2 = sam2.annotate_sam2:annotate_sam2_cmd',
+        ],
+    }
 )

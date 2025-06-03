@@ -1,4 +1,4 @@
-# segment-anything-2 real-time
+# sam2-stream
 Run Segment Anything Model 2 on a **live video stream**
 
 ## News

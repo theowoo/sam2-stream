@@ -375,3 +375,32 @@ def remove_lines(fig=None, ticks=True, spines=True, axis=None):
         if spines:
             for spine in ax.spines.values():
                 spine.set_visible(0)
+
+
+def overlay_prediction(im, model):
+    """Overlay model prediction on input image. Return (overlay, masks)."""
+
+    import cv2
+
+    out_obj_ids, out_mask_logits = model.track(im)
+
+    masks = np.zeros(im.shape[:2], dtype=np.uint8)
+
+    # Masks in (h, w) with label i mapped to i+1, unlabelled = 0
+    for i in range(len(out_obj_ids)):
+        out_mask = (
+            (out_mask_logits[i] > 0.0).permute(1, 2, 0).cpu().numpy().astype(np.uint8)
+        )
+        masks[out_mask[..., 0] == 1] = i + 1
+
+    # Convert masks to HSV colours with uniformly distributed hues
+    # +1 to prevent the wrap around on the edges
+    mask_hsv = np.zeros(im.shape, dtype=np.uint8)
+    mask_hsv[..., 0] = (masks + 1) / (len(out_obj_ids) + 2) * 255
+    mask_hsv[..., 1] = 255
+    mask_hsv[..., 2] = (masks > 0) * 255
+    mask_hsv = cv2.cvtColor(mask_hsv, cv2.COLOR_HSV2RGB)
+
+    overlay = cv2.addWeighted(im, 1, mask_hsv, 0.5, 0)
+
+    return overlay, masks
