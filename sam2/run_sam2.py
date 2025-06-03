@@ -77,7 +77,7 @@ def run_sam2(
 
     if output_video is not None:
         output_dirname = os.path.dirname(output_video)
-        if not os.path.isdir(output_dirname):
+        if output_dirname != "" and not os.path.isdir(output_dirname):
             os.mkdir(output_dirname)
 
         output_video_basename = os.path.basename(output_video)
@@ -88,7 +88,7 @@ def run_sam2(
 
     if output is not None:
         output_dirname = os.path.dirname(output)
-        if not os.path.isdir(output_dirname):
+        if output_dirname != "" and not os.path.isdir(output_dirname):
             os.mkdir(output_dirname)
 
         output_basename = os.path.basename(output)
@@ -171,7 +171,7 @@ def run_sam2(
         os.rename(tmp_output, output)
 
 
-@click.command()
+@click.command(context_settings={"show_default": True})
 @click.argument("input", required=True)
 @click.option("--model", "-m", required=True, help="Path to SAM2 model checkpoint.")
 @click.option(

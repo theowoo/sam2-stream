@@ -4,6 +4,7 @@
 import os
 
 import tkinter as tk
+import warnings
 from tkinter import ttk
 
 import cv2
@@ -17,6 +18,8 @@ import rich_click as click
 from matplotlib.backend_bases import MouseButton
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from tqdm.rich import tqdm
+
+warnings.filterwarnings("ignore", message="rich is experimental")
 
 from sam2.utils.io import load_sam2_model, refine_sam2_model
 from sam2.utils.misc import overlay_prediction, remove_lines
@@ -449,7 +452,7 @@ def annotate_sam2(
     tk.mainloop()
 
 
-@click.command()
+@click.command(context_settings={"show_default": True})
 @click.argument("input", required=True)
 @click.option("--model", "-m", required=True, help="Path to SAM2 model checkpoint.")
 @click.option(

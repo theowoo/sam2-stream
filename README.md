@@ -1,7 +1,9 @@
 # sam2-stream
-Run Segment Anything Model 2 on a **live video stream**
+Run Segment Anything Model 2 on a **live video stream** with GUI for point prompts (WIP).
 
 ## News
+- 03/06/2025 : GUI for annotation, save output as hdf5
+- 10/03/2025 : Fix adding points or bbox during tracking
 - 13/12/2024 : Update to sam2.1
 - 20/08/2024 : Fix management of ```non_cond_frame_outputs``` for better performance and add bbox prompt
 
@@ -17,21 +19,19 @@ Run Segment Anything Model 2 on a **live video stream**
 
 ## Getting Started
 
-## Installation
+### Installation
 
 SAM 2 needs to be installed first before use. The code requires `python>=3.10`, as well as `torch>=2.5.1` and `torchvision>=0.20.1`. Please follow the instructions [here](https://pytorch.org/get-started/locally/) to install both PyTorch and TorchVision dependencies. You can install SAM 2 on a GPU machine using:
 
 ```bash
-git clone https://github.com/theowoo/sam2-stream.git && cd sam2
-
-pip install -e .
+pip install 'sam-2 @ git+https://github.com/theowoo/sam2-stream.git@gui'
 ```
 If you are installing on Windows, it's strongly recommended to use [Windows Subsystem for Linux (WSL)](https://learn.microsoft.com/en-us/windows/wsl/install) with Ubuntu.
 
-To use the SAM 2 predictor and run the example notebooks, `jupyter` and `matplotlib` are required and can be installed by:
+To use the SAM 2 predictor and run the example notebooks, `jupyter` is required and can be installed by:
 
 ```bash
-pip install -e ".[notebooks]"
+pip install 'sam-2 @ git+https://github.com/theowoo/sam2-stream.git@gui[demo]'
 ```
 
 Note:
@@ -40,8 +40,6 @@ Note:
 3. If you see a message like `Failed to build the SAM 2 CUDA extension` during installation, you can ignore it and still use SAM 2 (some post-processing functionality may be limited, but it doesn't affect the results in most cases).
 
 Please see [`INSTALL.md`](./INSTALL.md) for FAQs on potential issues and solutions.
-
-## Getting Started
 
 ### Download Checkpoints
 
@@ -62,10 +60,44 @@ or individually from:
 
 (note that these are the improved checkpoints denoted as SAM 2.1; see [Model Description](#model-description) for details.)
 
+### Annotation GUI
 
-Then SAM-2-stream can be used in a few lines as follows for image and video and **camera** prediction.
+This repo provides a GUI adding points prompts for a dataset. Current features are basic and under development. 
+
+Usage guide: 
+
+```bash
+annotate_sam2 --help
+```
+
+Example:
+
+```bash
+annotate_sam2 blackswan.mp4 --model checkpoints/sam2.1_hiera_small.pt --model-config configs/sam2.1/sam2.1_hiera_s.yaml --output blackswan.annotation
+```
+
+The `--model-config` is a string reference that should match the name of the model checkpoint, but the config file itself doesn't have to be downloaded separately.
+
+### Run prediction using annotation file
+
+The `run_sam2` command can save predictions as masks (HDF5) and/or produce an overlay video. When no output flags are provided, overlay will playback online.
+
+Usage guide: 
+
+```bash
+run_sam2 --help
+```
+
+Example:
+
+```bash
+run_sam2 blackswan.mp4 --model checkpoints/sam2.1_hiera_small.pt --model-config configs/sam2.1/sam2.1_hiera_s.yaml --annotation blackswan.annotation --output blackswan.segmentation --output-video blackswan_overlay.mp4
+```
+
 
 ### Camera prediction
+
+Then SAM-2-stream can be used in a few lines as follows for image and video and **camera** prediction.
 
 ```python
 import torch
@@ -107,3 +139,4 @@ We provide the file `sam2/benchmark.py` to test the speed gain from using the mo
 ## References:
 
 - SAM2 Repository: https://github.com/facebookresearch/sam2
+- SAM2-real-time Repository: https://github.com/Gy920/segment-anything-2-real-time
