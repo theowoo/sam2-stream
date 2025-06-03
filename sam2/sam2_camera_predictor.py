@@ -6,15 +6,16 @@
 
 from collections import OrderedDict
 
+import cv2
+import numpy as np
+
 import torch
+import torch.nn.functional as F
 
 from tqdm import tqdm
 
 from sam2.modeling.sam2_base import NO_OBJ_SCORE, SAM2Base
 from sam2.utils.misc import concat_points, fill_holes_in_mask_scores
-import numpy as np
-import cv2
-import torch.nn.functional as F
 
 # torch._dynamo.config.capture_dynamic_output_shape_ops = True
 
@@ -41,6 +42,7 @@ class SAM2CameraPredictor(SAM2Base):
         self.clear_non_cond_mem_for_multi_obj = clear_non_cond_mem_for_multi_obj
         self.condition_state = {}
         self.frame_idx = 0
+
     ###
     def perpare_data(
         self,
@@ -65,6 +67,7 @@ class SAM2CameraPredictor(SAM2Base):
         img -= img_mean
         img /= img_std
         return img, width, height
+
     ###
     @torch.inference_mode()
     def load_first_frame(self, img):
@@ -79,6 +82,7 @@ class SAM2CameraPredictor(SAM2Base):
         self.condition_state["video_width"] = width
         self._get_image_feature(frame_idx=0, batch_size=1)
 
+    @torch.inference_mode()
     def add_conditioning_frame(self, img):
         img, width, height = self.perpare_data(img, image_size=self.image_size)
         self.condition_state["images"].append(img)
@@ -86,6 +90,7 @@ class SAM2CameraPredictor(SAM2Base):
         self._get_image_feature(
             frame_idx=self.condition_state["num_frames"] - 1, batch_size=1
         )
+
     ###
     def _init_state(
         self,
@@ -140,6 +145,7 @@ class SAM2CameraPredictor(SAM2Base):
         self.condition_state["tracking_has_started"] = False
         self.condition_state["frames_already_tracked"] = {}
         return self.condition_state
+
     ###
     def _obj_id_to_idx(self, obj_id):
         """Map client-side object id to model-side object index."""
@@ -180,10 +186,12 @@ class SAM2CameraPredictor(SAM2Base):
     def _obj_idx_to_id(self, obj_idx):
         """Map model-side object index to client-side object id."""
         return self.condition_state["obj_idx_to_id"][obj_idx]
+
     ###
     def _get_obj_num(self):
         """Get the total number of unique object ids received so far in this session."""
         return len(self.condition_state["obj_idx_to_id"])
+
     ###
     @torch.inference_mode()
     def add_new_prompt(
@@ -310,6 +318,7 @@ class SAM2CameraPredictor(SAM2Base):
             consolidated_out["pred_masks_video_res"]
         )
         return frame_idx, obj_ids, video_res_masks
+
     ###
     @torch.inference_mode()
     def add_new_points(
@@ -417,6 +426,7 @@ class SAM2CameraPredictor(SAM2Base):
             consolidated_out["pred_masks_video_res"]
         )
         return frame_idx, obj_ids, video_res_masks
+
     ###
     @torch.inference_mode()
     def add_new_mask(
@@ -502,6 +512,7 @@ class SAM2CameraPredictor(SAM2Base):
             consolidated_out["pred_masks_video_res"]
         )
         return frame_idx, obj_ids, video_res_masks
+
     ###
     def _get_orig_video_res_output(self, any_res_masks):
         """
@@ -762,31 +773,48 @@ class SAM2CameraPredictor(SAM2Base):
             input_frames_inds.update(mask_inputs_per_frame.keys())
         assert all_consolidated_frame_inds == input_frames_inds
 
-    def add_new_promot_during_track(
-        self, point=None, bbox=None, mask=None, if_new_target=True
+    def add_new_prompt_during_track(
+        self,
+        point=None,
+        bbox=None,
+        mask=None,
+        if_new_target=True,
+        obj_id=None,
+        labels=None,
+        clear_old_points=True,
     ):
         assert (
             self.condition_state["tracking_has_started"] == True
-        ), "Cannot add new points or mask during tracking without calling "
+        ), "Cannot add new points or mask during tracking without calling track()"
 
         self.condition_state["tracking_has_started"] = False
 
-        obj_id = self.condition_state["obj_ids"][-1] + 1 if if_new_target else self.condition_state["obj_ids"][-1]
-        frame_idx = 0
+        if if_new_target == True:
+            raise NotImplementedError()
 
-        print("shape ",len(self.condition_state["images"])," frame idex ",frame_idx)
+        if obj_id is None:
+            if if_new_target:
+                obj_id = self.condition_state["obj_ids"][-1] + 1
+            else:
+                self.condition_state["obj_ids"][-1]
+
+        frame_idx = self.condition_state["num_frames"] - 1
+
+        print("shape ", len(self.condition_state["images"]), " frame index ", frame_idx)
         if point is not None or bbox is not None:
-            self.add_new_prompt(
+            frame_idx, obj_ids, video_res_masks = self.add_new_prompt(
                 frame_idx,
                 obj_id,
                 points=point,
                 bbox=bbox,
-                clear_old_points=False,
+                labels=labels,
+                clear_old_points=clear_old_points,
                 normalize_coords=True,
             )
         else:
             self.add_new_mask(frame_idx, obj_id, mask)
 
+        return frame_idx, obj_ids, video_res_masks
 
     ###
     @torch.inference_mode()
@@ -859,6 +887,7 @@ class SAM2CameraPredictor(SAM2Base):
 
         _, video_res_masks = self._get_orig_video_res_output(pred_masks_gpu)
         return obj_ids, video_res_masks
+
     ###
     def _manage_memory_obj(self, frame_idx, current_out):
         output_dict = self.condition_state["output_dict"]
@@ -1050,6 +1079,7 @@ class SAM2CameraPredictor(SAM2Base):
         features = self._prepare_backbone_features(expanded_backbone_out)
         features = (expanded_image,) + features
         return features
+
     ###
     def _get_feature(self, img, batch_size):
         image = img.cuda().float().unsqueeze(0)
@@ -1139,7 +1169,12 @@ class SAM2CameraPredictor(SAM2Base):
         return compact_current_out, pred_masks_gpu
 
     def _run_memory_encoder(
-        self, frame_idx, batch_size, high_res_masks,object_score_logits, is_mask_from_pts
+        self,
+        frame_idx,
+        batch_size,
+        high_res_masks,
+        object_score_logits,
+        is_mask_from_pts,
     ):
         """
         Run the memory encoder on `high_res_masks`. This is usually after applying

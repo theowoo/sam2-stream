@@ -107,7 +107,7 @@ class SAM2VideoPredictor(SAM2Base):
         inference_state["tracking_has_started"] = False
         inference_state["frames_already_tracked"] = {}
         # Warm up the visual backbone and cache the image feature on frame 0
-        
+
         self._get_image_feature(inference_state, frame_idx=0, batch_size=1)
         return inference_state
 
