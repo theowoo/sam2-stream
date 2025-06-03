@@ -76,8 +76,11 @@ Example:
 annotate_sam2 blackswan.mp4 --model checkpoints/sam2.1_hiera_small.pt --model-config configs/sam2.1/sam2.1_hiera_s.yaml --output blackswan.annotation
 ```
 
+Image sequence:
+
 ```bash
-annotate_sam2 blackswan.mp4 --model checkpoints/sam2.1_hiera_small.pt --model-config configs/sam2.1/sam2.1_hiera_s.yaml --output blackswan.annotation
+ffmpeg -i blackswan.mp4 -q:v 2 -start_number 0 blackswan_frames/%05d.jpg
+annotate_sam2 blackswan_frames/ --model checkpoints/sam2.1_hiera_small.pt --model-config configs/sam2.1/sam2.1_hiera_s.yaml --output blackswan.annotation
 ```
 
 
