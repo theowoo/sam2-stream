@@ -9,7 +9,7 @@ from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
 # Package metadata
 NAME = "SAM-2"
-VERSION = "1.1"
+VERSION = "1.1.1"
 DESCRIPTION = "SAM 2: Segment Anything in Images and Videos (stream)"
 URL = "https://github.com/theowoo/sam2-stream"
 AUTHOR = "Meta AI"

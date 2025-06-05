@@ -26,6 +26,19 @@ SAM 2 needs to be installed first before use. The code requires `python>=3.10`, 
 ```bash
 pip install 'sam-2 @ git+https://github.com/theowoo/sam2-stream.git@gui'
 ```
+
+To upgrade:
+
+```bash
+pip install --upgrade 'sam-2 @ git+https://github.com/theowoo/sam2-stream.git@gui'
+```
+
+To upgrade to the latest unversioned update:
+
+```bash
+pip install --force-reinstall 'sam-2 @ git+https://github.com/theowoo/sam2-stream.git@gui'
+```
+
 If you are installing on Windows, it's strongly recommended to use [Windows Subsystem for Linux (WSL)](https://learn.microsoft.com/en-us/windows/wsl/install) with Ubuntu.
 
 To use the SAM 2 predictor and run the example notebooks, `jupyter` is required and can be installed by:

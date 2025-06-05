@@ -3,6 +3,7 @@
 
 import os
 import sys
+import warnings
 from glob import glob
 
 import cv2
@@ -10,6 +11,8 @@ import h5py
 import numpy as np
 import rich_click as click
 from tqdm.rich import tqdm
+
+warnings.filterwarnings("ignore", message="rich is experimental")
 
 from sam2.utils.io import load_sam2_model, refine_sam2_model
 from sam2.utils.misc import overlay_prediction
@@ -29,7 +32,7 @@ def run_sam2(
     start: float = 0,
     end: float = None,
     rerun: bool = False,
-    codec: str = "MP4V",
+    codec: str = "mp4v",
     fps: float = None,
 ):
 
@@ -229,7 +232,7 @@ def run_sam2(
 @click.option("--start", type=float, help="Start video at (seconds)")
 @click.option("--end", type=float, help="End video at (seconds)")
 @click.option("--rerun", is_flag=True, help="Overwrite existing output")
-@click.option("--codec", default="MP4V", type=str, help="Alternative: H264, VP90")
+@click.option("--codec", default="mp4v", type=str, help="Alternative: H264, VP90")
 @click.option(
     "--fps",
     default=None,
@@ -247,7 +250,7 @@ def run_sam2_cmd(
     start: float = 0,
     end: float = None,
     rerun: bool = False,
-    codec: str = "MP4V",
+    codec: str = "mp4v",
     fps: float = None,
 ):
     """Plot mask overlay. (INPUT : video or directory containing image sequence.)"""
