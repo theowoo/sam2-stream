@@ -180,7 +180,6 @@ def run_sam2(
 
         # Show on screen
         if play_video:
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             cv2.imshow("frame", frame)
 
         if output is not None:
