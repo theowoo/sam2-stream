@@ -84,10 +84,20 @@ class VideoBrowser(object):
         self.ann_frame_idx = np.empty(0)
         self.labels = np.empty(0)
 
+             
+    def load_frames(self):
+        images = []
+
+        for f in tqdm(self.frames_samples, desc="Reading frames:"):
+            im = self.get_frame(f)
+            images.append(im)
+
+        self.ann_frames = images
+        
     def load_annotation(self):
         with h5py.File(self.output, "r") as hf:
             self.frames = hf["frames"][:]
-            self.ann_frames = hf["ann_frames"][:]
+            self.existing_ann_frames = hf["ann_frames"][:]
             self.ann_frame_idx = hf["ann_frame_idx"][:]
             self.labels = hf["labels"][:]
             self.positions = hf["positions"][:]
@@ -95,6 +105,21 @@ class VideoBrowser(object):
             self.label_names = hf.attrs["label_names"]
 
         click.secho("Exisitng annotations loaded.", fg="green")
+        
+    def append_existing_ann_frames(self):
+        
+        unique_frames_annotated = np.unique(self.frames)
+        idx_not_in_sample = np.where(~np.isin(unique_frames_annotated, self.frames_samples))[0]
+        frames_not_in_sample = unique_frames_annotated[idx_not_in_sample]
+        ann_frames_not_in_sample = self.existing_ann_frames[self.ann_frame_idx[idx_not_in_sample]]
+        
+        
+        for f, im in zip(frames_not_in_sample, ann_frames_not_in_sample):
+            self.frames_samples = np.append(self.frames_samples, [f])
+            self.ann_frames.append(im)
+            new_idx = len(self.frames_samples) - 1
+            self.ann_frame_idx[self.frames == f] = new_idx
+            click.secho(f"Append frame {f} as index {new_idx}", fg="yellow")
 
     def init_model(self, model, model_config):
         model_instance = load_sam2_model(model, model_config)
@@ -128,7 +153,7 @@ class VideoBrowser(object):
     def init_canvas(self):
         n_cols = min(self.n_cols, len(self.ann_frames))
         n_rows = int(np.ceil(len(self.ann_frames) / n_cols))
-
+        
         self.fig, self.ax = plt.subplots(n_rows, n_cols, sharex=True, sharey=True)
         self.ax = self.ax.reshape(-1)
 
@@ -222,14 +247,6 @@ class VideoBrowser(object):
 
         return im
 
-    def load_frames(self):
-        images = []
-
-        for f in tqdm(self.frames_samples, desc="Reading frames:"):
-            im = self.get_frame(f)
-            images.append(im)
-
-        self.ann_frames = images
 
     def init_plot_handles(self):
         im_plots = []
@@ -403,17 +420,15 @@ def annotate_sam2(
     browser.root.geometry("1200x600")
     browser.root.title("Menu")
 
+    browser.load_frames()
+
     # Load annotations if exists
     if os.path.isfile(output):
+            
         browser.load_annotation()
-        if not np.all(np.isin(browser.frames, browser.frames_samples)):
-            for f in np.unique(
-                browser.frames[~np.isin(browser.frames, browser.frames_samples)]
-            ):
-                browser.frames_samples = np.append(browser.frames_samples, [f])
-                new_idx = len(browser.frames_samples) - 1
-                browser.ann_frame_idx[browser.frames == f] = new_idx
-                click.secho(f"Append frame {f} as index {new_idx}", fg="yellow")
+        
+        if not np.all(np.isin(browser.frames, browser.frames_samples)):  
+            browser.append_existing_ann_frames()
 
         if len(browser.label_names) < n_classes:
             new_label_names = [f"label{i+1}" for i in range(n_classes)]
@@ -421,7 +436,6 @@ def annotate_sam2(
             browser.label_names = new_label_names
 
     # Set up plot
-    browser.load_frames()
     browser.predictions = browser.ann_frames
     browser.init_canvas()
     browser.init_plot_handles()
