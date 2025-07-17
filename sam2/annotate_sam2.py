@@ -84,7 +84,6 @@ class VideoBrowser(object):
         self.ann_frame_idx = np.empty(0)
         self.labels = np.empty(0)
 
-             
     def load_frames(self):
         images = []
 
@@ -93,7 +92,7 @@ class VideoBrowser(object):
             images.append(im)
 
         self.ann_frames = images
-        
+
     def load_annotation(self):
         with h5py.File(self.output, "r") as hf:
             self.frames = hf["frames"][:]
@@ -105,15 +104,18 @@ class VideoBrowser(object):
             self.label_names = hf.attrs["label_names"]
 
         click.secho("Exisitng annotations loaded.", fg="green")
-        
+
     def append_existing_ann_frames(self):
-        
+
         unique_frames_annotated = np.unique(self.frames)
-        idx_not_in_sample = np.where(~np.isin(unique_frames_annotated, self.frames_samples))[0]
+        idx_not_in_sample = np.where(
+            ~np.isin(unique_frames_annotated, self.frames_samples)
+        )[0]
         frames_not_in_sample = unique_frames_annotated[idx_not_in_sample]
-        ann_frames_not_in_sample = self.existing_ann_frames[self.ann_frame_idx[idx_not_in_sample]]
-        
-        
+        ann_frames_not_in_sample = self.existing_ann_frames[
+            self.ann_frame_idx[idx_not_in_sample]
+        ]
+
         for f, im in zip(frames_not_in_sample, ann_frames_not_in_sample):
             self.frames_samples = np.append(self.frames_samples, [f])
             self.ann_frames.append(im)
@@ -153,7 +155,7 @@ class VideoBrowser(object):
     def init_canvas(self):
         n_cols = min(self.n_cols, len(self.ann_frames))
         n_rows = int(np.ceil(len(self.ann_frames) / n_cols))
-        
+
         self.fig, self.ax = plt.subplots(n_rows, n_cols, sharex=True, sharey=True)
         self.ax = self.ax.reshape(-1)
 
@@ -246,7 +248,6 @@ class VideoBrowser(object):
             _, im = self.cap.read()
 
         return im
-
 
     def init_plot_handles(self):
         im_plots = []
@@ -424,10 +425,10 @@ def annotate_sam2(
 
     # Load annotations if exists
     if os.path.isfile(output):
-            
+
         browser.load_annotation()
-        
-        if not np.all(np.isin(browser.frames, browser.frames_samples)):  
+
+        if not np.all(np.isin(browser.frames, browser.frames_samples)):
             browser.append_existing_ann_frames()
 
         if len(browser.label_names) < n_classes:
