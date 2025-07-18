@@ -264,7 +264,6 @@ class VideoBrowser(object):
                     f"label_curr_idx: {self.label_curr_idx}",
                     fg="blue",
                 )
-                click.secho(f"browser.ann_frame_idx {self.ann_frame_idx}", fg="yellow")
             else:
                 click.secho("Empty subplot. Ignored.", fg="yellow")
 
