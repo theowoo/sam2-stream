@@ -127,6 +127,8 @@ class VideoBrowser(object):
             -len(self.existing_videos_samples) :
         ]
 
+        click.secho(f"Combined sources: {self.videos}", fg="blue")
+
     def append_existing_ann_frames(self):
 
         sample_vid_frame = np.array(
@@ -151,6 +153,11 @@ class VideoBrowser(object):
                 new_idx = len(self.frames_samples) - 1
 
             self.ann_frame_idx[self.ann_frame_idx == idx] = new_idx
+
+        click.secho(
+            f"Appended annotated frames: {self.videos_samples} {self.frames_samples}",
+            fg="blue",
+        )
 
     def init_model(self, model, model_config):
         model_instance = load_sam2_model(model, model_config)
@@ -300,7 +307,7 @@ class VideoBrowser(object):
             neg = self.ax[i].scatter([], [], s=20, ec="k", fc="None")
             neg_plots.append(neg)
 
-            self.ax[i].set_title(f"{os.path.basename(v)}\n{f}")
+            self.ax[i].set_title(f"{os.path.basename(v)}\n{f}", fontsize=10)
 
             pbar.update(1)
             pbar.refresh()
@@ -404,6 +411,7 @@ class VideoBrowser(object):
         ), f"Frame number must be smaller than {self.n_frames}."
 
         self.frames_samples = np.append(self.frames_samples, [frame_to_add])
+        self.videos_samples = np.append(self.videos_samples, [self.videos_samples[0]])
 
         # load new frame
         im = self.get_frame(frame_to_add)
