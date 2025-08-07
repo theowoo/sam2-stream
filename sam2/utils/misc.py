@@ -384,14 +384,12 @@ def overlay_prediction(im, model):
 
     out_obj_ids, out_mask_logits = model.track(im)
 
-    masks = np.zeros(im.shape[:2], dtype=np.uint8)
-
-    # Masks in (h, w) with label i mapped to i+1, unlabelled = 0
-    for i in range(len(out_obj_ids)):
-        out_mask = (
-            (out_mask_logits[i] > 0.0).permute(1, 2, 0).cpu().numpy().astype(np.uint8)
-        )
-        masks[out_mask[..., 0] == 1] = i + 1
+    # Assign label with the highest score
+    out_mask_logits_cpu = out_mask_logits.permute(0, 2, 3, 1).cpu().numpy()[..., 0]
+    masks = np.argmax(out_mask_logits_cpu, axis=0)
+    masks += 1
+    # Take only positive score
+    masks[np.max(out_mask_logits_cpu, axis=0) <= 0] = 0
 
     # Convert masks to HSV colours with uniformly distributed hues
     # +1 to prevent the wrap around on the edges
