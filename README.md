@@ -2,6 +2,7 @@
 Run Segment Anything Model 2 on a **live video stream** with GUI for point prompts (WIP).
 
 ## News
+- 07/08/2025 : Segmentation now assigns the highest-scoring class instead of the newest class with a positive prediction score
 - 21/07/2025 : [Breaking change] Support annotations multiple video/image sources (Run `annotation_1to2` to upgrade old annotation files to the new format.)
 - 03/06/2025 : GUI for annotation, save output as hdf5, supports both video and image sequence inputs
 - 10/03/2025 : Fix adding points or bbox during tracking
