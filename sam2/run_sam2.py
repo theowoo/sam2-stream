@@ -144,8 +144,10 @@ def run_sam2(
             hf.attrs["frame_start"] = frame_start
             hf.attrs["frame_end"] = frame_end
             hf.attrs["label_names"] = label_names
-            
-            frame_numbers = np.arange(frame_start, frame_start+sampling_rate*total_samples, sampling_rate)
+
+            frame_numbers = np.arange(
+                frame_start, frame_start + sampling_rate * total_samples, sampling_rate
+            )
             hf.create_dataset("frame_numbers", data=frame_numbers, dtype="int32")
 
     PBAR = tqdm(total=total_samples, file=sys.stdout)

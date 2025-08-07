@@ -32,7 +32,6 @@ class VideoBrowser(object):
     def __init__(self):
         self.positions = np.array([[0, 0]])
         self.is_target = np.array([1])
-        self.frames = np.ones(len(self.positions)) * 0
         self.ann_frames = np.ones((len(self.positions), 100, 100, 3)) * 127
         self.ann_frame_idx = np.ones(len(self.positions)) * 0
         self.labels = np.ones(len(self.positions)) * 0
@@ -43,6 +42,7 @@ class VideoBrowser(object):
         self.label_curr_var = None
         self.label_curr_idx = 0
         self.output = None
+        self.videos = None
 
     def init_input(self, input):
         if os.path.isdir(input):
@@ -65,11 +65,19 @@ class VideoBrowser(object):
 
     def init_annotation(self, input, tmp_output):
         rel_video_path = os.path.relpath(input, os.path.dirname(tmp_output))
+        self.videos = [rel_video_path]
         with h5py.File(tmp_output, "w") as hf:
-            hf.attrs["video"] = rel_video_path
+            hf.attrs["videos"] = self.videos  # reference list of videos
+            hf.attrs["videos_samples"] = (
+                self.videos_samples
+            )  # video IDs of 'ann_frames'
+            hf.attrs["frames_samples"] = self.frames_samples  # frame of 'ann_frames'
             hf.attrs["label_names"] = self.label_names
-            hf.create_dataset("frames", data=self.frames, dtype="int32")
-            hf.create_dataset("ann_frames", data=self.ann_frames, dtype="uint8")
+            hf.create_dataset(
+                "ann_frames", data=self.ann_frames, dtype="uint8"
+            )  # image
+
+            # Annotations
             hf.create_dataset("ann_frame_idx", data=self.ann_frame_idx, dtype="int32")
             hf.create_dataset("labels", data=self.labels, dtype="int32")
             hf.create_dataset("positions", data=self.positions, dtype="float32")
@@ -80,21 +88,84 @@ class VideoBrowser(object):
         self.positions = np.empty((0, 2))
         self.is_target = np.empty((0, 1))
         self.ann_frames = np.empty(0)
-        self.frames = np.empty(0)
-        self.ann_frame_idx = np.empty(0)
+        self.ann_frame_idx = np.empty(0, dtype="int32")
         self.labels = np.empty(0)
+
+    def load_frames(self):
+        images = []
+
+        for f in tqdm(self.frames_samples, desc="Reading frames:"):
+            im = self.get_frame(f)
+            images.append(im)
+
+        self.ann_frames = images
 
     def load_annotation(self):
         with h5py.File(self.output, "r") as hf:
-            self.frames = hf["frames"][:]
-            self.ann_frames = hf["ann_frames"][:]
+            self.existing_videos = hf.attrs["videos"]
+            self.existing_videos_samples = hf.attrs["videos_samples"]
+            self.existing_frames_samples = hf.attrs["frames_samples"]
+            self.label_names = hf.attrs["label_names"]
+            self.existing_ann_frames = hf["ann_frames"][:]
+
             self.ann_frame_idx = hf["ann_frame_idx"][:]
             self.labels = hf["labels"][:]
             self.positions = hf["positions"][:]
             self.is_target = hf["is_target"][:]
-            self.label_names = hf.attrs["label_names"]
 
         click.secho("Exisitng annotations loaded.", fg="green")
+
+    def combine_multiple_sources(self):
+        videos_concat = np.concatenate([self.videos, self.existing_videos])
+        videos_concat = np.array([os.path.basename(v) for v in videos_concat])
+        new_videos, inverse = np.unique(videos_concat, return_inverse=True)
+        idx_concat = np.concatenate(
+            [self.videos_samples, self.existing_videos_samples + 1]
+        )
+        self.videos = new_videos
+        self.videos_samples = inverse[idx_concat][: len(self.videos_samples)]
+        self.existing_videos_samples = inverse[idx_concat][
+            -len(self.existing_videos_samples) :
+        ]
+
+        click.secho(f"Combined sources: {self.videos}", fg="blue")
+
+    def append_existing_ann_frames(self):
+
+        sample_vid_frame = np.array(
+            [f"{v}-{f}" for v, f in zip(self.videos_samples, self.frames_samples)]
+        )
+
+        new_idx_ref = (
+            np.ones(len(self.videos_samples) + len(self.existing_videos_samples))
+            * np.nan
+        )
+        for idx in np.unique(self.ann_frame_idx):
+
+            v = self.existing_videos_samples[idx]
+            f = self.existing_frames_samples[idx]
+            vid_frame = f"{v}-{f}"
+
+            if vid_frame not in sample_vid_frame:
+                im = self.existing_ann_frames[idx]
+
+                self.videos_samples = np.append(self.videos_samples, [v])
+                self.frames_samples = np.append(self.frames_samples, [f])
+
+                self.ann_frames = np.append(self.ann_frames, [im], axis=0)
+                new_idx = len(self.frames_samples) - 1
+
+            else:
+                new_idx = np.where(sample_vid_frame == vid_frame)[0][0]
+
+            new_idx_ref[idx] = new_idx
+
+        self.ann_frame_idx = new_idx_ref[self.ann_frame_idx].astype("int32")
+
+        click.secho(
+            f"Appended annotated frames: {self.videos_samples} {self.frames_samples}",
+            fg="blue",
+        )
 
     def init_model(self, model, model_config):
         model_instance = load_sam2_model(model, model_config)
@@ -102,23 +173,25 @@ class VideoBrowser(object):
         click.secho(f"{model} loaded", fg="green")
         self.model = model_instance
 
-    def add_points(self, position, is_target, frame, frame_idx, label):
+    def add_points(self, position, is_target, frame_idx, label):
         self.positions = np.append(self.positions, position, axis=0)
         self.ann_frame_idx = np.append(self.ann_frame_idx, [frame_idx])
         self.is_target = np.append(self.is_target, np.array([is_target], dtype=int))
-        self.frames = np.append(self.frames, [frame])
         self.labels = np.append(self.labels, [label])
 
     def write_annotation(self):
         with h5py.File(self.tmp_output, "r+") as hf:
-            del hf["frames"]
             del hf["ann_frames"]
             del hf["ann_frame_idx"]
             del hf["labels"]
             del hf["positions"]
             del hf["is_target"]
-            hf.create_dataset("frames", data=self.frames, dtype="int32")
+            click.secho(self.videos, fg="yellow")
+            hf.attrs["videos"] = np.array(self.videos, dtype=h5py.string_dtype())
+            hf.attrs["videos_samples"] = self.videos_samples
+            hf.attrs["frames_samples"] = self.frames_samples
             hf.create_dataset("ann_frames", data=self.ann_frames, dtype="uint8")
+
             hf.create_dataset("ann_frame_idx", data=self.ann_frame_idx, dtype="int32")
             hf.create_dataset("labels", data=self.labels, dtype="int32")
             hf.create_dataset("positions", data=self.positions, dtype="float32")
@@ -186,11 +259,10 @@ class VideoBrowser(object):
 
             if ax_idx < len(self.ann_frames):
                 new_position = np.array([[event.xdata, event.ydata]])
-                frame = self.frames_samples[ax_idx]
+                click.secho(f"self.frames_samples = {self.frames_samples}")
                 self.add_points(
                     new_position,
                     self.is_target_mode,
-                    frame,
                     ax_idx,
                     self.label_curr_idx,
                 )
@@ -202,12 +274,12 @@ class VideoBrowser(object):
                 click.secho(
                     f"position: {new_position} "
                     f"is_target: {self.is_target_mode} "
-                    f"frame: {frame} "
+                    f"vid: {self.videos[self.videos_samples[ax_idx]]} "
+                    f"frame: {self.frames_samples[ax_idx]} "
                     f"ax_idx: {ax_idx} "
                     f"label_curr_idx: {self.label_curr_idx}",
                     fg="blue",
                 )
-
             else:
                 click.secho("Empty subplot. Ignored.", fg="yellow")
 
@@ -222,22 +294,17 @@ class VideoBrowser(object):
 
         return im
 
-    def load_frames(self):
-        images = []
-
-        for f in tqdm(self.frames_samples, desc="Reading frames:"):
-            im = self.get_frame(f)
-            images.append(im)
-
-        self.ann_frames = images
-
     def init_plot_handles(self):
         im_plots = []
         pos_plots = []
         neg_plots = []
 
+        video_names = np.array(self.videos)[self.videos_samples]
+
         pbar = tqdm(total=len(self.frames_samples), desc="Reading frames:")
-        for i, (f, im) in enumerate(zip(self.frames_samples, self.ann_frames)):
+        for i, (v, f, im) in enumerate(
+            zip(video_names, self.frames_samples, self.ann_frames)
+        ):
             # Plot with segmentation overlay
             im_viz = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
             im_handle = self.ax[i].imshow(im_viz)
@@ -249,7 +316,7 @@ class VideoBrowser(object):
             neg = self.ax[i].scatter([], [], s=20, ec="k", fc="None")
             neg_plots.append(neg)
 
-            self.ax[i].set_title(f)
+            self.ax[i].set_title(f"{os.path.basename(v)}\n{f}", fontsize=10)
 
             pbar.update(1)
             pbar.refresh()
@@ -274,7 +341,8 @@ class VideoBrowser(object):
 
     def update_plots(self):
         pbar = tqdm(total=len(self.frames_samples), desc="Updating plots:")
-        for f, imax, im, pos, neg in zip(
+        for v, f, imax, im, pos, neg in zip(
+            self.videos_samples,
             self.frames_samples,
             self.im_plots,
             self.predictions,
@@ -284,22 +352,26 @@ class VideoBrowser(object):
             # Update overlay prediction
             imax.set_data(im)
 
+            ann_filter = (self.videos_samples[self.ann_frame_idx] == v) & (
+                self.frames_samples[self.ann_frame_idx] == f
+            )
+
             # Update positive points
-            labels = self.labels[(self.frames == f) & (self.is_target == 1)]
+            labels = self.labels[ann_filter & (self.is_target == 1)]
             hue = (labels + 1) / (len(np.unique(self.labels)) + 1)
             color_hsv = np.ones((len(hue), 3))
             color_hsv[..., 0] = hue
-            xx, yy = self.positions[(self.frames == f) & (self.is_target == 1)].T
+            xx, yy = self.positions[ann_filter & (self.is_target == 1)].T
             if len(xx) > 0:
                 pos.set_offsets(np.vstack([xx, yy]).T)
                 pos.set_facecolors(matplotlib.colors.hsv_to_rgb(color_hsv))
 
             # Update negative points
-            labels = self.labels[(self.frames == f) & (self.is_target == 0)]
+            labels = self.labels[ann_filter & (self.is_target == 0)]
             hue = (labels + 1) / (len(np.unique(self.labels)) + 1)
             color_hsv = np.ones((len(hue), 3))
             color_hsv[..., 0] = hue
-            xx, yy = self.positions[(self.frames == f) & (self.is_target == 0)].T
+            xx, yy = self.positions[ann_filter & (self.is_target == 0)].T
             if len(xx) > 0:
                 neg.set_offsets(np.vstack([xx, yy]).T)
                 neg.set_edgecolors(matplotlib.colors.hsv_to_rgb(color_hsv))
@@ -348,6 +420,7 @@ class VideoBrowser(object):
         ), f"Frame number must be smaller than {self.n_frames}."
 
         self.frames_samples = np.append(self.frames_samples, [frame_to_add])
+        self.videos_samples = np.append(self.videos_samples, [self.videos_samples[0]])
 
         # load new frame
         im = self.get_frame(frame_to_add)
@@ -392,6 +465,7 @@ def annotate_sam2(
     browser.frames_samples = np.linspace(
         0, browser.n_frames, n_samples, endpoint=False, dtype=int
     )
+    browser.videos_samples = np.zeros(n_samples, dtype=int)
 
     # Initialise model
     browser.label_names = [f"label{i+1}" for i in range(n_classes)]
@@ -403,25 +477,22 @@ def annotate_sam2(
     browser.root.geometry("1200x600")
     browser.root.title("Menu")
 
+    browser.load_frames()
+
     # Load annotations if exists
     if os.path.isfile(output):
+
         browser.load_annotation()
-        if not np.all(np.isin(browser.frames, browser.frames_samples)):
-            for f in np.unique(
-                browser.frames[~np.isin(browser.frames, browser.frames_samples)]
-            ):
-                browser.frames_samples = np.append(browser.frames_samples, [f])
-                new_idx = len(browser.frames_samples) - 1
-                browser.ann_frame_idx[browser.frames == f] = new_idx
-                click.secho(f"Append frame {f} as index {new_idx}", fg="yellow")
+        browser.combine_multiple_sources()
+        browser.append_existing_ann_frames()
 
         if len(browser.label_names) < n_classes:
             new_label_names = [f"label{i+1}" for i in range(n_classes)]
             new_label_names[: len(browser.label_names)] = browser.label_names
             browser.label_names = new_label_names
+            browser.write_label_names()
 
     # Set up plot
-    browser.load_frames()
     browser.predictions = browser.ann_frames
     browser.init_canvas()
     browser.init_plot_handles()
