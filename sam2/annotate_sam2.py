@@ -117,6 +117,7 @@ class VideoBrowser(object):
 
     def combine_multiple_sources(self):
         videos_concat = np.concatenate([self.videos, self.existing_videos])
+        videos_concat = np.array([os.path.basename(v) for v in videos_concat])
         new_videos, inverse = np.unique(videos_concat, return_inverse=True)
         idx_concat = np.concatenate(
             [self.videos_samples, self.existing_videos_samples + 1]
@@ -135,24 +136,31 @@ class VideoBrowser(object):
             [f"{v}-{f}" for v, f in zip(self.videos_samples, self.frames_samples)]
         )
 
+        new_idx_ref = (
+            np.ones(len(self.videos_samples) + len(self.existing_videos_samples))
+            * np.nan
+        )
         for idx in np.unique(self.ann_frame_idx):
 
             v = self.existing_videos_samples[idx]
             f = self.existing_frames_samples[idx]
             vid_frame = f"{v}-{f}"
 
-            if vid_frame in sample_vid_frame:
-                new_idx = np.where(sample_vid_frame == vid_frame)[0]
-                self.ann_frame_idx[self.ann_frame_idx == idx] = new_idx
-
-            else:
+            if vid_frame not in sample_vid_frame:
                 im = self.existing_ann_frames[idx]
+
                 self.videos_samples = np.append(self.videos_samples, [v])
                 self.frames_samples = np.append(self.frames_samples, [f])
+
                 self.ann_frames = np.append(self.ann_frames, [im], axis=0)
                 new_idx = len(self.frames_samples) - 1
 
-            self.ann_frame_idx[self.ann_frame_idx == idx] = new_idx
+            else:
+                new_idx = np.where(sample_vid_frame == vid_frame)[0][0]
+
+            new_idx_ref[idx] = new_idx
+
+        self.ann_frame_idx = new_idx_ref[self.ann_frame_idx].astype("int32")
 
         click.secho(
             f"Appended annotated frames: {self.videos_samples} {self.frames_samples}",
@@ -178,7 +186,8 @@ class VideoBrowser(object):
             del hf["labels"]
             del hf["positions"]
             del hf["is_target"]
-            hf.attrs["videos"] = self.videos
+            click.secho(self.videos, fg="yellow")
+            hf.attrs["videos"] = np.array(self.videos, dtype=h5py.string_dtype())
             hf.attrs["videos_samples"] = self.videos_samples
             hf.attrs["frames_samples"] = self.frames_samples
             hf.create_dataset("ann_frames", data=self.ann_frames, dtype="uint8")
